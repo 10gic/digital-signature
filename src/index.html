@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+    <head lang="en">
+        <meta charset="utf-8" />
+        <title>Blockchain Digital Signature</title>
+        <link rel="stylesheet" href="css/bootstrap.css">
+        <link rel="stylesheet" href="css/app.css">
+        <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+        <meta content="Blockchain Digital Signature - Online Tool" name="description" />
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="text-center">Blockchain Digital Signature - Online Tool</h1>
+            <p class="version">v0.5.6</p>
+            <hr>
+            <div class="row">
+                <div class="col-md-12">
+                    <h2>Key Pair</h2>
+                    <form class="form-horizontal" role="form">
+                        <div class="form-group">
+                            <label for="signType" class="col-sm-2 control-label">Sign Type</label>
+                            <div class="col-sm-10">
+                                <select id="signType" class="form-control">
+                                    <option value="secp256k1" selected>ECDSA (secp256k1)</option>
+                                    <option value="secp256r1">ECDSA (secp256r1 / X9.62 prime256v1 / NIST P-256)</option>
+                                    <option value="schnorr-bip340">Schnorr (BIP340 variant)</option>
+                                    <option value="ed25519">Ed25519</option>
+                                    <option value="sr25519">Schnorrkel/Ristretto x25519 (sr25519), signing context = "substrate", expansion mode = Ed25519</option>
+<!-- For signing context, See: https://github.com/polkadot-js/wasm/blob/4083abb1dd0061c12e689e5b3492ccf0b9a430c7/packages/wasm-crypto/src/rs/sr25519.rs#L18-->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Action 1: Keygen</label>
+                            <div class="col-sm-10">
+                                <div class="form-inline">
+                                    <div class="input-group-inline">
+                                        <button class="btn" id="generatePrivateKey"><b>Generate Private Key</b></button>
+                                        <span>, or enter your own below</span>.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="privateKey" class="col-sm-2 control-label">Private Key</label>
+                            <div class="col-sm-10">
+                                <textarea id="privateKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group hidden" id="expandedPrivateKeyContainer">
+                            <label for="privateKey" class="col-sm-2 control-label">Expanded Private Key (SHA512 of private key, left half is schnorr key, right half is for nonce)</label>
+                            <div class="col-sm-10">
+                                <textarea id="expandedPrivateKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="publicKey" class="col-sm-2 control-label">Public Key</label>
+                            <div class="col-sm-10">
+                                <textarea id="publicKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group" id="compressedPublicKeyContainer">
+                            <label for="compressedPublicKey" class="col-sm-2 control-label">Compressed Public Key</label>
+                            <div class="col-sm-10">
+                                <textarea id="compressedPublicKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h2>Sign Message</h2>
+                    <form class="form-horizontal" role="form">
+                        <div class="form-group">
+                            <label for="inputMessageType" class="col-sm-2 control-label">Input Message Type</label>
+                            <div class="col-sm-10">
+                                <select id="inputMessageType" class="form-control">
+                                    <option value="utf8" selected>Text (UTF-8 format)</option>
+                                    <option value="hex">Binary (hex format)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="inputMessage" class="col-sm-2 control-label">Input Message</label>
+                            <div class="col-sm-10">
+                                <textarea id="inputMessage" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">Hello</textarea>
+                            </div>
+                        </div>
+                        <div class="form-group hidden" id="schnorrInputMessageTipsContainer">
+                            <label class="col-sm-2 control-label"></label>
+                            <div class="col-sm-10">
+                                <div class="form-inline">
+                                    <div class="input-group-inline">
+                                        <span>Tips: Input Message is the `m` in `SHA256("SHA256(BIP0340/challenge") || SHA256("BIP0340/challenge") || bytes(R) || bytes(P) || m)`</span>.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group hidden" id="ed25519InputMessageTipsContainer">
+                            <label class="col-sm-2 control-label"></label>
+                            <div class="col-sm-10">
+                                <div class="form-inline">
+                                    <div class="input-group-inline">
+                                        <span>Tips: Input Message is the `M` in `SHA512(R || A || M)`</span>.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group" id="inputMessageHashFuncContainer">
+                            <label for="inputMessageHashFunc" class="col-sm-2 control-label">Hash Function</label>
+                            <div class="col-sm-10">
+                                <select id="inputMessageHashFunc" class="form-control">
+                                    <option value="sha256" selected>sha256</option>
+                                    <option value="sha512_256">sha512_256 (a variant of sha512)</option>
+                                    <option value="sha3_256">sha3_256</option>
+                                    <option value="keccak_256">keccak_256</option>
+                                    <option value="blake2s_256">blake2s_256</option>
+                                    <option value="blake2b_256">blake2b_256</option>
+                                    <option value="blake3_256">blake3_256</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group"  id="inputMessageHashContainer">
+                            <label for="inputMessageHash" class="col-sm-2 control-label">Input Message Hash</label>
+                            <div class="col-sm-10">
+                                <!-- 185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969 = sha256(Hello) -->
+                                <textarea id="inputMessageHash" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969</textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Action 2: Sign</label>
+                            <div class="col-sm-10">
+                                <div class="form-inline">
+                                    <div class="input-group-inline">
+                                        <button class="btn" id="calculateSign"><b>Calculate Signature</b></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="signResult" class="col-sm-2 control-label">Signature Result</label>
+                            <div class="col-sm-10">
+                                <textarea id="signResult" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group" id="signResultRecoveryIdContainer">
+                            <label for="signResultRecoveryId" class="col-sm-2 control-label">Signature Result (RecoveryId)</label>
+                            <div class="col-sm-10">
+                                <textarea id="signResultRecoveryId" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h2>Verify Sign</h2>
+                    <form class="form-horizontal" role="form">
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Action 3: Verify</label>
+                            <div class="col-sm-10">
+                                <div class="form-inline">
+                                    <div class="input-group-inline">
+                                        <button class="btn" id="verifySign"><b>Verify Signature</b></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="verifyResult" class="col-sm-2 control-label">Verify Result</label>
+                            <div class="col-sm-10">
+                                <textarea id="verifyResult" class="form-control" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="feedback-container">
+            <div class="feedback">Loading...</div>
+        </div>
+
+        <script src="js/jquery-3.2.1.js"></script>
+        <script src="js/bootstrap.js"></script>
+        <script src="js/bundle-polkadot-util.js"></script>
+        <script src="js/bundle-polkadot-util-crypto.js"></script>
+        <script src="js/bundle-polkadot-keyring.js"></script>
+        <script src="js/noble-curves.js"></script>
+        <script src="js/noble-hashes.js"></script>
+        <script src="js/sha512.js"></script>
+        <script type="module" src="js/ed25519.js"></script>
+        <script type="module" src="js/index.js"></script>
+    </body>
+</html>

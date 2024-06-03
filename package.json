@@ -1,0 +1,9 @@
+{
+  "name": "blockchain-digital-signature",
+  "description": "A tool for testing blockchain digital signature online",
+  "version": "1.0.0",
+  "author": "10gic",
+  "license": "ISC",
+  "dependencies": {
+  }
+}
