@@ -12,6 +12,7 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
     const SignType = {
         secp256k1: 'secp256k1',
         secp256r1: 'secp256r1',
+        ecdsaStark: 'ecdsa-stark',
         schnorrBip340: 'schnorr-bip340',
         ed25519: 'ed25519',
         sr25519: 'sr25519',
@@ -30,14 +31,17 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
     DOM.compressedPublicKeyContainer = $("#compressedPublicKeyContainer")
     DOM.compressedPublicKey = $("#compressedPublicKey")
 
+    DOM.inputMessageTypeContainer = $("#inputMessageTypeContainer")
     DOM.inputMessageType = $("#inputMessageType")
     DOM.inputMessage = $("#inputMessage")
     DOM.schnorrInputMessageTipsContainer = $("#schnorrInputMessageTipsContainer")
     DOM.ed25519InputMessageTipsContainer = $("#ed25519InputMessageTipsContainer")
+    DOM.ecdsaStarkInputMessageTipsContainer = $("#ecdsaStarkInputMessageTipsContainer")
     DOM.inputMessageHashFuncContainer = $("#inputMessageHashFuncContainer")
     DOM.inputMessageHashFunc = $("#inputMessageHashFunc")
     DOM.inputMessageHashContainer = $("#inputMessageHashContainer")
     DOM.inputMessageHash = $("#inputMessageHash")
+    DOM.inputMessageHashTipsContainer = $("#inputMessageHashTipsContainer")
     DOM.calculateSign = $("#calculateSign")
     DOM.signResult = $("#signResult")
     DOM.signResultRecoveryIdContainer = $("#signResultRecoveryIdContainer")
@@ -82,8 +86,27 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
 
             DOM.schnorrInputMessageTipsContainer.addClass("hidden")
             DOM.ed25519InputMessageTipsContainer.addClass("hidden")
+            DOM.ecdsaStarkInputMessageTipsContainer.addClass("hidden")
+            DOM.inputMessageHashTipsContainer.addClass("hidden")
 
+            DOM.inputMessageTypeContainer.removeClass("hidden")
             DOM.inputMessageHashFuncContainer.removeClass("hidden")
+            DOM.inputMessageHashContainer.removeClass("hidden")
+            DOM.signResultRecoveryIdContainer.removeClass("hidden")
+        } else if (signType === SignType.ecdsaStark) {
+            // No expanded private key for ECDSA
+            DOM.expandedPrivateKeyContainer.addClass("hidden")
+
+            // Show compressed public key for ECDSA
+            DOM.compressedPublicKeyContainer.removeClass("hidden")
+
+            DOM.schnorrInputMessageTipsContainer.addClass("hidden")
+            DOM.ed25519InputMessageTipsContainer.addClass("hidden")
+            DOM.ecdsaStarkInputMessageTipsContainer.removeClass("hidden")
+            DOM.inputMessageHashTipsContainer.removeClass("hidden")
+
+            DOM.inputMessageTypeContainer.addClass("hidden")
+            DOM.inputMessageHashFuncContainer.addClass("hidden")
             DOM.inputMessageHashContainer.removeClass("hidden")
             DOM.signResultRecoveryIdContainer.removeClass("hidden")
         } else if (signType === SignType.schnorrBip340) {
@@ -95,7 +118,10 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
 
             DOM.schnorrInputMessageTipsContainer.removeClass("hidden")
             DOM.ed25519InputMessageTipsContainer.addClass("hidden")
+            DOM.ecdsaStarkInputMessageTipsContainer.addClass("hidden")
+            DOM.inputMessageHashTipsContainer.addClass("hidden")
 
+            DOM.inputMessageTypeContainer.removeClass("hidden")
             DOM.inputMessageHashFuncContainer.addClass("hidden")
             DOM.inputMessageHashContainer.addClass("hidden")
             DOM.signResultRecoveryIdContainer.addClass("hidden")
@@ -108,7 +134,10 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
 
             DOM.schnorrInputMessageTipsContainer.addClass("hidden")
             DOM.ed25519InputMessageTipsContainer.removeClass("hidden")
+            DOM.ecdsaStarkInputMessageTipsContainer.addClass("hidden")
+            DOM.inputMessageHashTipsContainer.addClass("hidden")
 
+            DOM.inputMessageTypeContainer.removeClass("hidden")
             DOM.inputMessageHashFuncContainer.addClass("hidden")
             DOM.inputMessageHashContainer.addClass("hidden")
             DOM.signResultRecoveryIdContainer.addClass("hidden")
@@ -121,12 +150,28 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
 
             DOM.schnorrInputMessageTipsContainer.addClass("hidden")
             DOM.ed25519InputMessageTipsContainer.addClass("hidden")
+            DOM.ecdsaStarkInputMessageTipsContainer.addClass("hidden")
+            DOM.inputMessageHashTipsContainer.addClass("hidden")
 
+            DOM.inputMessageTypeContainer.removeClass("hidden")
             DOM.inputMessageHashFuncContainer.addClass("hidden")
             DOM.inputMessageHashContainer.addClass("hidden")
             DOM.signResultRecoveryIdContainer.addClass("hidden")
         } else {
             showError("unreachable code, should not run to here");
+        }
+
+        if (signType === SignType.ecdsaStark) {
+            if (!DOM.inputMessage.val().startsWith("[")) {
+                DOM.inputMessage.val(`[1, 500, "0x3130676963"]`) // just input an valid example
+                DOM.inputMessageHash.val("0642fa88d70501e7bd82dae7885f4addee1baa807041d60a4c1335cde47ee3dd")
+            }
+        } else {
+            if (DOM.inputMessage.val().startsWith("[")) {
+                // Just clear it
+                DOM.inputMessage.val("")
+                DOM.inputMessageHash.val("")
+            }
         }
     }
 
@@ -169,6 +214,7 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         // clear it firstly
         DOM.expandedPrivateKey.val("")
         DOM.publicKey.val("")
+        DOM.compressedPublicKey.val("")
 
         const privateKeyUint8Array = hexToBytes(DOM.privateKey.val())
         let publicKeyHex
@@ -186,6 +232,12 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
             publicKeyHex = bytesToHex(publicKey)
 
             const compressedPublicKey = nobleCurves.p256.getPublicKey(privateKeyUint8Array, true)
+            compressedPublicKeyHex = bytesToHex(compressedPublicKey)
+        } else if (signType === SignType.ecdsaStark) {
+            const publicKey = starknet.ec.starkCurve.getPublicKey(privateKeyUint8Array, false)
+            publicKeyHex = bytesToHex(publicKey)
+
+            const compressedPublicKey = starknet.ec.starkCurve.getPublicKey(privateKeyUint8Array, true)
             compressedPublicKeyHex = bytesToHex(compressedPublicKey)
         } else if (signType === SignType.schnorrBip340) {
             const publicKey = nobleCurves.secp256k1_schnorr.getPublicKey(privateKeyUint8Array)
@@ -227,7 +279,13 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
     }
 
     function generateRandomPrivateKey() {
-        const privateKey = randomBytes(32)
+        let privateKey
+        if (DOM.signType.val() === SignType.ecdsaStark) {
+            // private key of STARK curve is a random value that less than 2^{251} + 17 * 2^{192} + 1
+            privateKey = starknet.ec.starkCurve.utils.randomPrivateKey()
+        } else {
+            privateKey = randomBytes(32)
+        }
         const privateHex = bytesToHex(privateKey)
         DOM.privateKey.val(privateHex)
         return privateHex;
@@ -243,7 +301,7 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         }, 400);
     }
 
-    function getInputMessage() {
+    function getInputMessageAsUint8Array() {
         const inputMessage = DOM.inputMessage.val()
         if (inputMessage === "") {
             return new Uint8Array()
@@ -262,34 +320,44 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
     }
 
     function inputMessageChanged() {
-        const message = getInputMessage()
-        if (message === "") {
-            return
-        }
+        let messageHashBytes
 
-        const inputMessageHashFunc = DOM.inputMessageHashFunc.val()
-        let messageHash
-        if (inputMessageHashFunc === "sha256") {
-            messageHash = nobleHashes.sha256(message)
-        } else if (inputMessageHashFunc === "sha512_256") {
-            const result = sha512_256(message) // the function sha512_256 comes from sha512.js
-            messageHash = hexToBytes(result)
-        } else if (inputMessageHashFunc === "sha3_256") {
-            messageHash = nobleHashes.sha3_256(message)
-        } else if (inputMessageHashFunc === "keccak_256") {
-            messageHash = nobleHashes.keccak_256(message)
-        } else if (inputMessageHashFunc === "blake2s_256") {
-            messageHash = nobleHashes.blake2s(message)
-        } else if (inputMessageHashFunc === "blake2b_256") {
-            messageHash = nobleHashes.blake2b(message, {dkLen: 32})
-        } else if (inputMessageHashFunc === "blake3_256") {
-            messageHash = nobleHashes.blake3(message)
+        const signType = DOM.signType.val()
+        if (signType === SignType.ecdsaStark) {
+            const inputMessage = DOM.inputMessage.val()
+            // parse string to array
+            const inputArray = JSON.parse(inputMessage);
+            const result = starknet.hash.computeHashOnElements(inputArray)
+            // the result omit the leading 0, so we use sanitizeHex to add leading 0
+            messageHashBytes = hexToBytes(starknet.encode.removeHexPrefix(starknet.encode.sanitizeHex(result)))
         } else {
-            throw new Error(`invalid input message hash func ${inputMessageHashFunc}`)
+            const message = getInputMessageAsUint8Array()
+            if (message.length === 0) {
+                return
+            }
+            const inputMessageHashFunc = DOM.inputMessageHashFunc.val()
+            if (inputMessageHashFunc === "sha256") {
+                messageHashBytes = nobleHashes.sha256(message)
+            } else if (inputMessageHashFunc === "sha512_256") {
+                const result = sha512_256(message) // the function sha512_256 comes from sha512.js
+                messageHashBytes = hexToBytes(result)
+            } else if (inputMessageHashFunc === "sha3_256") {
+                messageHashBytes = nobleHashes.sha3_256(message)
+            } else if (inputMessageHashFunc === "keccak_256") {
+                messageHashBytes = nobleHashes.keccak_256(message)
+            } else if (inputMessageHashFunc === "blake2s_256") {
+                messageHashBytes = nobleHashes.blake2s(message)
+            } else if (inputMessageHashFunc === "blake2b_256") {
+                messageHashBytes = nobleHashes.blake2b(message, {dkLen: 32})
+            } else if (inputMessageHashFunc === "blake3_256") {
+                messageHashBytes = nobleHashes.blake3(message)
+            } else {
+                throw new Error(`invalid input message hash func ${inputMessageHashFunc}`)
+            }
         }
 
-        console.log(messageHash)
-        DOM.inputMessageHash.val(bytesToHex(messageHash))
+        console.log(messageHashBytes)
+        DOM.inputMessageHash.val(bytesToHex(messageHashBytes))
     }
 
     function calculateSignClicked() {
@@ -317,8 +385,8 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
 
         const signType = DOM.signType.val()
         if (signType === SignType.secp256k1) {
-            if (!privateKeyUint8Array) {
-                showError("private key is invalid")
+            if (privateKeyUint8Array.length === 0) {
+                showError("Private Key is empty")
                 return
             }
 
@@ -335,8 +403,8 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
             DOM.signResult.val(bytesToHex(signResult))
             DOM.signResultRecoveryId.val(`0${signResultRecoveryId}`)
         } else if (signType === SignType.secp256r1) {
-            if (!privateKeyUint8Array) {
-                showError("private key is invalid")
+            if (privateKeyUint8Array.length === 0) {
+                showError("Private Key is empty")
                 return
             }
 
@@ -352,22 +420,44 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
 
             DOM.signResult.val(bytesToHex(signResult))
             DOM.signResultRecoveryId.val(`0${signResultRecoveryId}`)
+        } else if (signType === SignType.ecdsaStark) {
+            if (privateKeyUint8Array.length === 0) {
+                showError("Private Key is empty")
+                return
+            }
+
+            const inputMessageHashUint8Array = hexToBytes(DOM.inputMessageHash.val())
+            if (inputMessageHashUint8Array.length === 0) {
+                showError("Input Message Hash is empty")
+                return
+            }
+
+            signResult = starknet.ec.starkCurve.sign(inputMessageHashUint8Array, privateKeyUint8Array)
+            signResultRecoveryId = signResult.recovery // type of number
+            signResult = signResult.toCompactRawBytes()
+
+            DOM.signResult.val(bytesToHex(signResult))
+            DOM.signResultRecoveryId.val(`0${signResultRecoveryId}`)
         } else if (signType === SignType.schnorrBip340) {
-            const inputMessageUint8Array = getInputMessage()
+            const inputMessageUint8Array = getInputMessageAsUint8Array()
             signResult = nobleCurves.secp256k1_schnorr.sign(inputMessageUint8Array, privateKeyUint8Array)
             DOM.signResult.val(bytesToHex(signResult))
         } else if (signType === SignType.ed25519) {
-            const inputMessageUint8Array = getInputMessage()
+            const inputMessageUint8Array = getInputMessageAsUint8Array()
 
-            if (privateKeyUint8Array) {
+            if (privateKeyUint8Array.length > 0) {
                 signResult = nobleCurves.ed25519.sign(inputMessageUint8Array, privateKeyUint8Array)
             } else {
                 const expandedPrivateKeyUint8Array = hexToBytes(DOM.expandedPrivateKey.val())
+                if (expandedPrivateKeyUint8Array.length === 0) {
+                    showError("Private Key and Expanded Private Key are both empty")
+                    return
+                }
                 signResult = await ed25519SignWithExpandedPrivKey(inputMessageUint8Array, expandedPrivateKeyUint8Array)
             }
         } else if (signType === SignType.sr25519) {
             let keypair
-            if (privateKeyUint8Array) {
+            if (privateKeyUint8Array.length > 0) {
                 // Just like polkadot, use private key as the seed of sr25519 pair
                 // https://github.com/polkadot-js/wasm/blob/4083abb1dd0061c12e689e5b3492ccf0b9a430c7/packages/wasm-crypto/src/rs/sr25519.rs#L88
                 keypair = sr25519PairFromSeed(privateKeyUint8Array)
@@ -377,6 +467,10 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
                 // Note: public key certainly can be calculated from expanded private key. However, I don't find such js function
                 // So, user must provide public key in such case.
                 const expandedPrivateKeyUint8Array = hexToBytes(DOM.expandedPrivateKey.val())
+                if (expandedPrivateKeyUint8Array.length === 0) {
+                    showError("Private Key and Expanded Private Key are both empty")
+                    return
+                }
                 const publicKeyUint8Array = hexToBytes(DOM.publicKey.val())
                 keypair = {
                     secretKey: expandedPrivateKeyUint8Array,
@@ -384,7 +478,7 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
                 }
             }
 
-            const inputMessageUint8Array = getInputMessage()
+            const inputMessageUint8Array = getInputMessageAsUint8Array()
             signResult = sr25519Sign(inputMessageUint8Array, keypair)
         } else {
             console.error("calculateSign, not implementation")
@@ -424,14 +518,22 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
             }
 
             verifyResult = nobleCurves.p256.verify(signResultUint8Array, inputMessageHashUint8Array, publicKeyUint8Array)
+        } else if (signType === SignType.ecdsaStark) {
+            const inputMessageHashUint8Array = hexToBytes(DOM.inputMessageHash.val())
+            if (inputMessageHashUint8Array.length === 0) {
+                showError("Input Message Hash is empty")
+                return
+            }
+
+            verifyResult = starknet.ec.starkCurve.verify(signResultUint8Array, inputMessageHashUint8Array, publicKeyUint8Array)
         } else if (signType === SignType.schnorrBip340) {
-            const inputMessageUint8Array = getInputMessage()
+            const inputMessageUint8Array = getInputMessageAsUint8Array()
             verifyResult = nobleCurves.secp256k1_schnorr.verify(signResultUint8Array, inputMessageUint8Array, publicKeyUint8Array)
         } else if (signType === SignType.ed25519) {
-            const inputMessageUint8Array = getInputMessage()
+            const inputMessageUint8Array = getInputMessageAsUint8Array()
             verifyResult = nobleCurves.ed25519.verify(signResultUint8Array, inputMessageUint8Array, publicKeyUint8Array)
         } else if (signType === SignType.sr25519) {
-            const inputMessageUint8Array = getInputMessage()
+            const inputMessageUint8Array = getInputMessageAsUint8Array()
             verifyResult = sr25519Verify(inputMessageUint8Array, signResultUint8Array, publicKeyUint8Array)
         } else {
             showError("unreachable code, should not run to here")

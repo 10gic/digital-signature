@@ -22,6 +22,7 @@
                                 <select id="signType" class="form-control">
                                     <option value="secp256k1" selected>ECDSA (secp256k1)</option>
                                     <option value="secp256r1">ECDSA (secp256r1 / X9.62 prime256v1 / NIST P-256)</option>
+                                    <option value="ecdsa-stark">ECDSA (The STARK curve)</option>
                                     <option value="schnorr-bip340">Schnorr (BIP340 variant)</option>
                                     <option value="ed25519">Ed25519</option>
                                     <option value="sr25519">Schnorrkel/Ristretto x25519 (sr25519), signing context = "substrate", expansion mode = Ed25519</option>
@@ -72,7 +73,7 @@
                 <div class="col-md-12">
                     <h2>Sign Message</h2>
                     <form class="form-horizontal" role="form">
-                        <div class="form-group">
+                        <div class="form-group" id="inputMessageTypeContainer">
                             <label for="inputMessageType" class="col-sm-2 control-label">Input Message Type</label>
                             <div class="col-sm-10">
                                 <select id="inputMessageType" class="form-control">
@@ -107,6 +108,16 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="form-group hidden" id="ecdsaStarkInputMessageTipsContainer">
+                            <label class="col-sm-2 control-label"></label>
+                            <div class="col-sm-10">
+                                <div class="form-inline">
+                                    <div class="input-group-inline">
+                                        <span>Tips: Input Message is an array of element in <a href="https://docs.starknet.io/documentation/architecture_and_concepts/Cryptography/p-value/" target="_blank">STARK field</a>, each element must less than 2^{251} + 17*2^{192} + 1</span>.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-group" id="inputMessageHashFuncContainer">
                             <label for="inputMessageHashFunc" class="col-sm-2 control-label">Hash Function</label>
                             <div class="col-sm-10">
@@ -121,11 +132,21 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="form-group"  id="inputMessageHashContainer">
+                        <div class="form-group" id="inputMessageHashContainer">
                             <label for="inputMessageHash" class="col-sm-2 control-label">Input Message Hash</label>
                             <div class="col-sm-10">
                                 <!-- 185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969 = sha256(Hello) -->
                                 <textarea id="inputMessageHash" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969</textarea>
+                            </div>
+                        </div>
+                        <div class="form-group hidden" id="inputMessageHashTipsContainer">
+                            <label class="col-sm-2 control-label"></label>
+                            <div class="col-sm-10">
+                                <div class="form-inline">
+                                    <div class="input-group-inline">
+                                        <span>Tips: Input Message Hash is the <a href="https://docs.starknet.io/documentation/architecture_and_concepts/Cryptography/hash-functions/#pedersen_hash" target="_blank">pedersen hash</a> of some data, the result would less than 2^{251} + 17*2^{192} + 1</span>.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -204,6 +225,7 @@
         <script src="js/noble-curves.js"></script>
         <script src="js/noble-hashes.js"></script>
         <script src="js/sha512.js"></script>
+        <script src="js/starknet-5.24.3.js"></script>
         <script type="module" src="js/ed25519.js"></script>
         <script type="module" src="js/index.js"></script>
     </body>
