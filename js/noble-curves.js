@@ -1,3 +1,4 @@
+// From: https://github.com/paulmillr/noble-curves/releases
 "use strict";
 var nobleCurves = (() => {
   var __defProp = Object.defineProperty;

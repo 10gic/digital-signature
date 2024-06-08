@@ -1,3 +1,4 @@
+// From: https://github.com/paulmillr/noble-hashes/releases
 "use strict";
 var nobleHashes = (() => {
   var __defProp = Object.defineProperty;

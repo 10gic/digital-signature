@@ -1,3 +1,4 @@
+// From: https://github.com/polkadot-js/build-bundle
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('@polkadot/util')) :
     typeof define === 'function' && define.amd ? define(['exports', '@polkadot/util'], factory) :
