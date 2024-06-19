@@ -1,4 +1,7 @@
+////////////////////////////////////////////////////////////////////////////////
 // From: https://github.com/paulmillr/noble-curves/releases
+// I only added function: taprootTweakSecKey
+////////////////////////////////////////////////////////////////////////////////
 "use strict";
 var nobleCurves = (() => {
   var __defProp = Object.defineProperty;
@@ -2243,6 +2246,13 @@ var nobleCurves = (() => {
   function challenge(...args) {
     return modN(bytesToNumberBE(taggedHash("BIP0340/challenge", ...args)));
   }
+  function taprootTweakSecKey(seckey0) {
+    // From: https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki
+    const { bytes: pubkey, scalar: seckey } = schnorrGetExtPubKey(seckey0);
+    const t = bytesToNumberBE(taggedHash("TapTweak", pubkey));
+    if (t > secp256k1N) throw new Error("big than order");
+    return numTo32b(modN(seckey + t))
+  }
   function schnorrGetPublicKey(privateKey) {
     return schnorrGetExtPubKey(privateKey).bytes;
   }
@@ -2286,6 +2296,7 @@ var nobleCurves = (() => {
     }
   }
   var schnorr = /* @__PURE__ */ (() => ({
+    taprootTweakSecKey: taprootTweakSecKey,
     getPublicKey: schnorrGetPublicKey,
     sign: schnorrSign,
     verify: schnorrVerify,

@@ -1,5 +1,12 @@
 import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from './ed25519.js';
 
+function isHex(h) {
+    if (h.startsWith("0x")) {
+        h = h.slice(2)
+    }
+    return Boolean(h.match(/^[0-9a-f]+$/i))
+}
+
 (async function () {
     const { sr25519Sign, sr25519Verify, sr25519PairFromSeed, cryptoWaitReady } = polkadotUtilCrypto;
     // wait for polkadot crypto to be ready, see: https://github.com/polkadot-js/api/issues/4704
@@ -7,6 +14,7 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
 
     const hexToBytes = nobleCurves.utils.hexToBytes // hexToUint8Array
     const bytesToHex = nobleCurves.utils.bytesToHex // uint8ArrayToHex
+    const taprootTweakSecKey = nobleCurves.secp256k1_schnorr.taprootTweakSecKey
     const randomBytes = nobleHashes.utils.randomBytes
 
     const SignType = {
@@ -27,9 +35,14 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
     DOM.privateKey = $("#privateKey")
     DOM.expandedPrivateKeyContainer = $("#expandedPrivateKeyContainer")
     DOM.expandedPrivateKey = $("#expandedPrivateKey")
+    DOM.tweakedPrivateKeyContainer = $("#tweakedPrivateKeyContainer")
+    DOM.tweakedPrivateKey = $("#tweakedPrivateKey")
+    DOM.publicKeyContainer = $("#publicKeyContainer")
     DOM.publicKey = $("#publicKey")
     DOM.compressedPublicKeyContainer = $("#compressedPublicKeyContainer")
     DOM.compressedPublicKey = $("#compressedPublicKey")
+    DOM.tweakedPublicKeyContainer = $("#tweakedPublicKeyContainer")
+    DOM.tweakedPublicKey = $("#tweakedPublicKey")
 
     DOM.inputMessageTypeContainer = $("#inputMessageTypeContainer")
     DOM.inputMessageType = $("#inputMessageType")
@@ -74,15 +87,22 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         DOM.expandedPrivateKey.val("")
         DOM.publicKey.val("")
         DOM.compressedPublicKey.val("")
+        DOM.tweakedPublicKey.val("")
 
         const signType = e.target.value
         console.log("select", signType)
         if (signType === SignType.secp256k1 || signType === SignType.secp256r1) {
             // No expanded private key for ECDSA
             DOM.expandedPrivateKeyContainer.addClass("hidden")
+            // No tweaked private key for ECDSA
+            DOM.tweakedPrivateKeyContainer.addClass("hidden")
 
+            // Show public key for ECDSA
+            DOM.publicKeyContainer.removeClass("hidden")
             // Show compressed public key for ECDSA
             DOM.compressedPublicKeyContainer.removeClass("hidden")
+            // Do not show tweaked public key, it only for taproot
+            DOM.tweakedPublicKeyContainer.addClass("hidden")
 
             DOM.schnorrInputMessageTipsContainer.addClass("hidden")
             DOM.ed25519InputMessageTipsContainer.addClass("hidden")
@@ -96,9 +116,15 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         } else if (signType === SignType.ecdsaStark) {
             // No expanded private key for ECDSA
             DOM.expandedPrivateKeyContainer.addClass("hidden")
+            // No tweaked private key for ECDSA
+            DOM.tweakedPrivateKeyContainer.addClass("hidden")
 
+            // Show public key for ECDSA
+            DOM.publicKeyContainer.removeClass("hidden")
             // Show compressed public key for ECDSA
             DOM.compressedPublicKeyContainer.removeClass("hidden")
+            // Do not show tweaked public key, it only for taproot
+            DOM.tweakedPublicKeyContainer.addClass("hidden")
 
             DOM.schnorrInputMessageTipsContainer.addClass("hidden")
             DOM.ed25519InputMessageTipsContainer.addClass("hidden")
@@ -112,9 +138,15 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         } else if (signType === SignType.schnorrBip340) {
             // No expanded private key for schnorr
             DOM.expandedPrivateKeyContainer.addClass("hidden")
+            // Show tweaked private key for schnorrBip340
+            DOM.tweakedPrivateKeyContainer.removeClass("hidden")
 
+            // Do not show public key for schnorr
+            DOM.publicKeyContainer.addClass("hidden")
             // Do not show compressed public key for schnorr
             DOM.compressedPublicKeyContainer.addClass("hidden")
+            // Show tweaked public key
+            DOM.tweakedPublicKeyContainer.removeClass("hidden")
 
             DOM.schnorrInputMessageTipsContainer.removeClass("hidden")
             DOM.ed25519InputMessageTipsContainer.addClass("hidden")
@@ -128,9 +160,15 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         } else if (signType === SignType.ed25519) {
             // Show expanded private key
             DOM.expandedPrivateKeyContainer.removeClass("hidden")
+            // No tweaked private key for ECDSA
+            DOM.tweakedPrivateKeyContainer.addClass("hidden")
 
+            // Show public key
+            DOM.publicKeyContainer.removeClass("hidden")
             // Do not show compressed public key
             DOM.compressedPublicKeyContainer.addClass("hidden")
+            // Do not show tweaked public key, it only for taproot
+            DOM.tweakedPublicKeyContainer.addClass("hidden")
 
             DOM.schnorrInputMessageTipsContainer.addClass("hidden")
             DOM.ed25519InputMessageTipsContainer.removeClass("hidden")
@@ -144,9 +182,15 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         } else if (signType === SignType.sr25519) {
             // Show expanded private key
             DOM.expandedPrivateKeyContainer.removeClass("hidden")
+            // No tweaked private key for ECDSA
+            DOM.tweakedPrivateKeyContainer.addClass("hidden")
 
+            // Show public key
+            DOM.publicKeyContainer.removeClass("hidden")
             // Do not show compressed public key
             DOM.compressedPublicKeyContainer.addClass("hidden")
+            // Do not show tweaked public key, it only for taproot
+            DOM.tweakedPublicKeyContainer.addClass("hidden")
 
             DOM.schnorrInputMessageTipsContainer.addClass("hidden")
             DOM.ed25519InputMessageTipsContainer.addClass("hidden")
@@ -206,13 +250,14 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         }
 
         // Calculate and display
-        calcForExpandedPrivateKeyAndPublicKey();
+        calcForOtherPrivateKeyAndPublicKey();
         hidePending();
     }
 
-    async function calcForExpandedPrivateKeyAndPublicKey() {
+    async function calcForOtherPrivateKeyAndPublicKey() {
         // clear it firstly
         DOM.expandedPrivateKey.val("")
+        DOM.tweakedPrivateKey.val("")
         DOM.publicKey.val("")
         DOM.compressedPublicKey.val("")
 
@@ -240,8 +285,11 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
             const compressedPublicKey = starknet.ec.starkCurve.getPublicKey(privateKeyUint8Array, true)
             compressedPublicKeyHex = bytesToHex(compressedPublicKey)
         } else if (signType === SignType.schnorrBip340) {
-            const publicKey = nobleCurves.secp256k1_schnorr.getPublicKey(privateKeyUint8Array)
-            publicKeyHex = bytesToHex(publicKey)
+            const tweakSecKey = taprootTweakSecKey(privateKeyUint8Array)
+            const tweakedPublicKey = nobleCurves.secp256k1_schnorr.getPublicKey(tweakSecKey)
+
+            DOM.tweakedPrivateKey.val(bytesToHex(tweakSecKey))
+            DOM.tweakedPublicKey.val(bytesToHex(tweakedPublicKey))
         } else if (signType === SignType.ed25519) {
             const publicKey = nobleCurves.ed25519.getPublicKey(privateKeyUint8Array)
             publicKeyHex = bytesToHex(publicKey)
@@ -440,7 +488,9 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
             DOM.signResultRecoveryId.val(`0${signResultRecoveryId}`)
         } else if (signType === SignType.schnorrBip340) {
             const inputMessageUint8Array = getInputMessageAsUint8Array()
-            signResult = nobleCurves.secp256k1_schnorr.sign(inputMessageUint8Array, privateKeyUint8Array)
+
+            const tweakedPrivateKeyUint8Array = hexToBytes(DOM.tweakedPrivateKey.val())
+            signResult = nobleCurves.secp256k1_schnorr.sign(inputMessageUint8Array, tweakedPrivateKeyUint8Array)
             DOM.signResult.val(bytesToHex(signResult))
         } else if (signType === SignType.ed25519) {
             const inputMessageUint8Array = getInputMessageAsUint8Array()
@@ -528,7 +578,8 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
             verifyResult = starknet.ec.starkCurve.verify(signResultUint8Array, inputMessageHashUint8Array, publicKeyUint8Array)
         } else if (signType === SignType.schnorrBip340) {
             const inputMessageUint8Array = getInputMessageAsUint8Array()
-            verifyResult = nobleCurves.secp256k1_schnorr.verify(signResultUint8Array, inputMessageUint8Array, publicKeyUint8Array)
+            const tweakedPublicKeyUint8Array = hexToBytes(DOM.tweakedPublicKey.val())
+            verifyResult = nobleCurves.secp256k1_schnorr.verify(signResultUint8Array, inputMessageUint8Array, tweakedPublicKeyUint8Array)
         } else if (signType === SignType.ed25519) {
             const inputMessageUint8Array = getInputMessageAsUint8Array()
             verifyResult = nobleCurves.ed25519.verify(signResultUint8Array, inputMessageUint8Array, publicKeyUint8Array)
@@ -590,13 +641,6 @@ import { buildEd25519ExpandedPrivateKey, ed25519SignWithExpandedPrivKey } from '
         DOM.feedback
             .text("")
             .hide();
-    }
-
-    function isHex(h) {
-        if (h.startsWith("0x")) {
-            h = h.slice(2)
-        }
-        return Boolean(h.match(/^[0-9a-f]+$/i))
     }
 
     init();

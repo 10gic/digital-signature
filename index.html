@@ -47,13 +47,19 @@
                                 <textarea id="privateKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                             </div>
                         </div>
+                        <div class="form-group hidden" id="tweakedPrivateKeyContainer">
+                            <label for="tweakedPrivateKey" class="col-sm-2 control-label">Tweaked Private Key (Schnorr Private Key)</label>
+                            <div class="col-sm-10">
+                                <textarea id="tweakedPrivateKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
                         <div class="form-group hidden" id="expandedPrivateKeyContainer">
-                            <label for="privateKey" class="col-sm-2 control-label">Expanded Private Key (SHA512 of private key, left half is schnorr key, right half is for nonce)</label>
+                            <label for="expandedPrivateKey" class="col-sm-2 control-label">Expanded Private Key (SHA512 of private key, left half is schnorr key, right half is for nonce)</label>
                             <div class="col-sm-10">
                                 <textarea id="expandedPrivateKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                             </div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="publicKeyContainer">
                             <label for="publicKey" class="col-sm-2 control-label">Public Key</label>
                             <div class="col-sm-10">
                                 <textarea id="publicKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
@@ -63,6 +69,12 @@
                             <label for="compressedPublicKey" class="col-sm-2 control-label">Compressed Public Key</label>
                             <div class="col-sm-10">
                                 <textarea id="compressedPublicKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group hidden" id="tweakedPublicKeyContainer">
+                            <label for="tweakedPublicKey" class="col-sm-2 control-label">Tweaked Public Key (X-Only Public Key)</label>
+                            <div class="col-sm-10">
+                                <textarea id="tweakedPublicKey" class="form-control" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                             </div>
                         </div>
                     </form>
