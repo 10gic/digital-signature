@@ -245,7 +245,7 @@ function isHex(h) {
             return
         }
         if ((privateKey.startsWith("0x") && privateKey.length !== 66) || (privateKey.length !== 64)) {
-            showError("private key must be 64 bytes hex string");
+            showError("private key must be a 64-byte hex string without the 0x prefix");
             return
         }
 
